@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg-deep:#040611;
+    --bg-panel:#0a0e22;
+    --bg-panel-2:#0d1330;
+    --line:#1b2247;
+    --line-soft:#131a38;
+    --cyan:#4cf3ff;
+    --cyan-dim:rgba(76,243,255,0.35);
+    --magenta:#ff4cd6;
+    --violet:#8a5cff;
+    --green:#39ff9d;
+    --amber:#ffcc4c;
+    --text:#eaeeff;
+    --text-muted:#8791b8;
+    --text-faint:#4d5680;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-deep);
+    color:var(--text);
+    font-family:'Sora',sans-serif;
+    min-height:100vh;
+    line-height:1.5;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(76,243,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(76,243,255,0.035) 1px, transparent 1px);
+    background-size:42px 42px;
+    mask-image:radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 90%);
+  }
+  body::after{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 800px 420px at 12% -8%, rgba(76,243,255,0.14), transparent 60%),
+      radial-gradient(ellipse 640px 420px at 100% 6%, rgba(255,76,214,0.10), transparent 55%),
+      radial-gradient(ellipse 500px 400px at 60% 100%, rgba(138,92,255,0.08), transparent 60%);
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:var(--cyan); color:#04121a;}
+  a{color:inherit;}
+
+  .wrap{max-width:720px; margin:0 auto; padding:0 24px 70px; position:relative; z-index:1;}
+
+  canvas#confettiCanvas{position:fixed; inset:0; pointer-events:none; z-index:100;}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 0 18px;
+  }
+  .brand{display:flex; align-items:center; gap:9px;}
+  .brand-dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--cyan);
+    box-shadow:0 0 10px 3px var(--cyan-dim);
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1; box-shadow:0 0 10px 3px var(--cyan-dim);}
+    50%{opacity:0.55; box-shadow:0 0 4px 1px var(--cyan-dim);}
+  }
+  .brand-name{font-weight:700; font-size:14px; letter-spacing:0.01em;}
+
+  .header-actions{display:flex; align-items:center; gap:8px;}
+  .icon-btn{
+    background:rgba(255,255,255,0.02);
+    border:1px solid var(--line);
+    color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    padding:6px 13px;
+    border-radius:20px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .icon-btn:hover{border-color:var(--cyan-dim); color:var(--cyan);}
+  .icon-btn svg{width:13px; height:13px;}
+  #discordBtn{background:rgba(88,101,242,0.1); border-color:rgba(88,101,242,0.4); color:#a3aeff;}
+  #discordBtn:hover{border-color:#8f9bff; background:rgba(88,101,242,0.18);}
+  #discordBtn svg{fill:#a3aeff;}
+  #adminToggle.active{border-color:var(--green); color:var(--green);}
+
+  /* ---------- Hero ---------- */
+  .hero{margin-bottom:22px; text-align:center;}
+  .hero h1{
+    font-size:clamp(26px,5vw,36px);
+    font-weight:800;
+    letter-spacing:-0.02em;
+    margin:0 0 8px;
+    background:linear-gradient(100deg,#fff 25%, var(--cyan) 85%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero p{color:var(--text-muted); font-size:14px; margin:0;}
+
+  /* ---------- Stats bar ---------- */
+  .stats-bar{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px;}
+  .stat-chip{
+    flex:1 1 150px; max-width:220px;
+    background:linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel));
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 16px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+    transition:border-color .2s, transform .2s;
+  }
+  .stat-chip:hover{border-color:var(--cyan-dim); transform:translateY(-2px);}
+  .stat-chip::after{
+    content:"";
+    position:absolute; top:-70%; left:50%; transform:translateX(-50%);
+    width:120px; height:120px;
+    background:radial-gradient(circle, rgba(76,243,255,0.10), transparent 70%);
+    pointer-events:none;
+  }
+  .stat-label{display:block; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px; position:relative; z-index:1;}
+  .stat-value{display:block; font-size:15px; font-weight:700; color:var(--cyan); position:relative; z-index:1; word-break:break-all;}
+  .stat-value.dim{color:var(--text-faint); font-weight:500; font-size:12px;}
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; justify-content:center; gap:4px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:5px;
+    margin-bottom:26px;
+    position:relative;
+  }
+  .tab-btn{
+    flex:1; background:transparent; border:none; color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600;
+    padding:10px 8px; border-radius:10px; cursor:pointer; transition:color .18s;
+    position:relative; z-index:1;
+  }
+  .tab-btn.active{color:#04121a;}
+  .tab-indicator{
+    position:absolute; top:5px; bottom:5px; left:5px;
+    width:calc((100% - 10px)/2); /* default for 2 tabs */
+    background:linear-gradient(120deg, var(--cyan), #8be9ff);
+    border-radius:10px;
+    box-shadow:0 0 18px rgba(76,243,255,0.35);
+    transition:transform .25s cubic-bezier(.4,0,.2,1), width .25s cubic-bezier(.4,0,.2,1);
+    z-index:0;
+  }
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block; animation:fadein .25s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---------- Smart search ---------- */
+  .smart-search{position:relative; margin-bottom:18px;}
+  .smart-search input{
+    width:100%; background:var(--bg-panel); border:1px solid var(--line); border-radius:12px;
+    color:var(--text); font-family:'JetBrains Mono',monospace; font-size:14px;
+    padding:14px 16px 14px 42px; outline:none; transition:border-color .15s, box-shadow .15s;
+  }
+  .smart-search input:focus{border-color:var(--cyan); box-shadow:0 0 0 4px rgba(76,243,255,0.08);}
+  .smart-search svg{position:absolute; left:15px; top:50%; transform:translateY(-50%); width:16px; height:16px; stroke:var(--text-faint); pointer-events:none;}
+  .search-popup{
+    position:absolute; top:calc(100% + 8px); left:0; right:0;
+    background:var(--bg-panel-2); border:1px solid var(--cyan-dim); border-radius:12px;
+    box-shadow:0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(76,243,255,0.06);
+    max-height:280px; overflow-y:auto; z-index:20; display:none;
+  }
+  .search-popup.show{display:block; animation:fadein .15s ease;}
+  .search-popup .opt{padding:11px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line-soft); transition:background .1s;}
+  .search-popup .opt:last-child{border-bottom:none;}
+  .search-popup .opt:hover, .search-popup .opt.hl{background:rgba(76,243,255,0.06);}
+  .search-popup .opt-name{font-weight:600; font-size:13.5px;}
+  .search-popup .opt-name mark{background:none; color:var(--cyan);}
+  .search-popup .opt-addr{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .search-popup .no-match{padding:16px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; font-size:12.5px; text-align:center;}
+
+  /* ---------- Supported currencies disclaimer (new) ---------- */
+  .supported-currencies{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted);
+    background:rgba(255,255,255,0.02); border:1px solid var(--line-soft); border-radius:8px;
+    padding:8px 12px; margin-bottom:16px; line-height:1.6;
+  }
+  .supported-currencies strong{color:var(--cyan); font-weight:600;}
+
+  /* ---------- Crypto hint ---------- */
+  .crypto-hint{
+    font-family:'JetBrains Mono',monospace; font-size:11px; margin-top:6px; padding:6px 12px;
+    border-radius:8px; display:none; align-items:center; gap:6px;
+  }
+  .crypto-hint.show{display:flex;}
+  .crypto-hint.ok{background:rgba(57,255,157,0.1); border:1px solid rgba(57,255,157,0.3); color:var(--green);}
+  .crypto-hint.err{background:rgba(255,76,214,0.1); border:1px solid rgba(255,76,214,0.3); color:var(--magenta);}
+  .crypto-hint.warn{background:rgba(255,204,76,0.1); border:1px solid rgba(255,204,76,0.3); color:var(--amber);}
+
+  /* ---------- Empty state & selected card ---------- */
+  .empty-note{color:var(--text-faint); font-size:12.5px; font-family:'JetBrains Mono',monospace; padding:24px; border:1px dashed var(--line); border-radius:var(--radius); text-align:center;}
+  .selected-card{
+    position:relative;
+    background:linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel));
+    border:1px solid var(--line); border-radius:16px; padding:26px; overflow:hidden; display:none;
+  }
+  .selected-card.show{display:block; animation:fadein .3s ease;}
+  .selected-card::before{
+    content:""; position:absolute; inset:-1px; border-radius:16px; padding:1px;
+    background:linear-gradient(135deg, rgba(76,243,255,0.55), rgba(138,92,255,0.15) 40%, transparent 70%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .selected-card::after{
+    content:""; position:absolute; top:-60%; right:-30%; width:220px; height:220px;
+    background:radial-gradient(circle, rgba(76,243,255,0.13), transparent 70%); pointer-events:none;
+  }
+  .sc-body{display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;}
+  .sc-main{flex:1; min-width:200px;}
+  .sc-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .sc-label{font-size:19px; font-weight:800;}
+  .sc-tag{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--cyan);
+    border:1px solid var(--cyan-dim); padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .sc-address{
+    font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--text);
+    background:rgba(0,0,0,0.35); border:1px solid var(--line-soft); border-radius:10px;
+    padding:14px 16px; word-break:break-all; margin-bottom:12px;
+  }
+  .sc-note{font-size:12.5px; color:var(--text-faint); margin-bottom:16px;}
+  .sc-actions{display:flex; gap:10px; flex-wrap:wrap;}
+  .sc-qr{
+    background:#eaeeff; border-radius:12px; padding:10px;
+    display:flex; align-items:center; justify-content:center;
+    width:120px; height:120px; flex:0 0 auto;
+    box-shadow:0 0 20px rgba(76,243,255,0.15);
+  }
+  .sc-qr img, .sc-qr canvas{display:block; border-radius:4px;}
+  .sc-qr-fallback{color:#04121a; font-family:'JetBrains Mono',monospace; font-size:12px; text-align:center; word-break:break-all; padding:8px;}
+
+  .btn-primary{
+    background:linear-gradient(120deg, var(--cyan), #8be9ff); color:#04121a; border:none; font-weight:700;
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:11px 20px; border-radius:9px; cursor:pointer;
+    box-shadow:0 4px 20px rgba(76,243,255,0.25); transition:filter .15s, transform .1s;
+  }
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:active{transform:scale(0.98);}
+  .btn-primary:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-remove{color:var(--text-faint); background:transparent; border:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:11px; padding:6px 11px; border-radius:7px; cursor:pointer;}
+  .btn-remove:hover{border-color:var(--magenta); color:var(--magenta);}
+
+  /* ---------- Payment made button ---------- */
+  .btn-payment-made{
+    background:linear-gradient(120deg, var(--green), #39ff9d); color:#04121a; border:none; font-weight:700;
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:11px 20px; border-radius:9px; cursor:pointer;
+    box-shadow:0 4px 20px rgba(57,255,157,0.25); transition:filter .15s, transform .1s;
+  }
+  .btn-payment-made:hover{filter:brightness(1.08);}
+  .btn-payment-made:active{transform:scale(0.98);}
+
+  /* ---------- Admin panel (Setup tab) ---------- */
+  .admin-panel{background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-top:16px; display:none;}
+  .admin-panel.show{display:block;}
+  .admin-panel .title{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); margin-bottom:10px; text-transform:uppercase; letter-spacing:.05em;}
+  .admin-panel .row{display:grid; grid-template-columns:1fr 1.4fr 1fr auto; gap:8px; margin-bottom:14px;}
+  @media(max-width:640px){ .admin-panel .row{grid-template-columns:1fr;} }
+  .admin-panel input{
+    background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:7px; color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; outline:none;
+  }
+  .admin-panel input:focus{border-color:var(--cyan);}
+  .admin-panel hr{border:none; border-top:1px solid var(--line-soft); margin:14px 0;}
+  .btn-danger-ghost{
+    background:transparent; border:1px solid var(--line); color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:8px 14px; border-radius:7px; cursor:pointer; transition:all .15s;
+  }
+  .btn-danger-ghost:hover{border-color:var(--magenta); color:var(--magenta);}
+
+  /* ---------- Submissions list (admin) ---------- */
+  .submissions-list{max-height:320px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:10px; padding:8px;}
+  .submission-item{display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid var(--line-soft); gap:8px; flex-wrap:wrap;}
+  .submission-item:last-child{border-bottom:none;}
+  .submission-info{flex:1; min-width:180px;}
+  .submission-info .who{font-weight:600; font-size:13px; color:var(--text);}
+  .submission-info .what{font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;}
+  .submission-info .status{font-size:11px; text-transform:uppercase; font-family:'JetBrains Mono',monospace; margin-top:2px;}
+  .submission-status-pending{color:var(--amber);}
+  .submission-status-verified{color:var(--green);}
+  .submission-status-rejected{color:var(--magenta);}
+  .submission-actions{display:flex; gap:6px;}
+  .btn-sm{font-size:11px; padding:5px 10px; border-radius:6px; cursor:pointer; background:transparent; border:1px solid var(--line); color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+  .btn-sm:hover{border-color:var(--cyan-dim); color:var(--cyan);}
+  .btn-sm.verify:hover{border-color:var(--green); color:var(--green);}
+  .btn-sm.reject:hover{border-color:var(--magenta); color:var(--magenta);}
+  .no-submissions{color:var(--text-faint); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:14px; text-align:center;}
+
+  /* ---------- Form ---------- */
+  .form-panel{background:linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel)); border:1px solid var(--line); border-radius:16px; padding:22px;}
+  .quick-amounts{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:8px;}
+  .qa-btn{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:6px 12px; border-radius:20px;
+    border:1px solid var(--line); background:rgba(255,255,255,0.015); color:var(--text-muted); cursor:pointer; transition:all .15s;
+  }
+  .qa-btn:hover{border-color:var(--cyan-dim); color:var(--cyan);}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:640px){ .form-grid{grid-template-columns:1fr;} }
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field.full{grid-column:1 / -1;}
+  .field label{font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+  .field input, .field select, .field textarea{
+    background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:8px; color:var(--text);
+    font-family:'Sora',sans-serif; font-size:13.5px; padding:10px 12px; outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--cyan);}
+  .field textarea{resize:vertical; min-height:60px;}
+  .file-drop{
+    border:1px dashed var(--line); border-radius:8px; padding:14px; font-size:12.5px; color:var(--text-faint);
+    font-family:'JetBrains Mono',monospace; cursor:pointer; text-align:center; transition:border-color .15s, color .15s;
+  }
+  .file-drop:hover{border-color:var(--cyan-dim); color:var(--cyan);}
+  .file-drop.has-file{border-color:var(--green); color:var(--green);}
+  .submit-row{margin-top:18px; display:flex; align-items:center; gap:14px;}
+  .form-msg{font-size:12.5px; font-family:'JetBrains Mono',monospace;}
+  .form-msg.ok{color:var(--green);}
+  .form-msg.err{color:var(--magenta);}
+
+  /* ---------- Modals ---------- */
+  .modal-bg{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); align-items:center; justify-content:center; z-index:50; padding:24px;}
+  .modal-bg.show{display:flex;}
+  .modal-close{position:fixed; top:24px; right:24px; background:var(--bg-panel); border:1px solid var(--line); color:var(--text); width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:16px;}
+
+  .discord-modal{
+    position:relative; max-width:380px; width:100%;
+    background:linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel));
+    border:1px solid rgba(88,101,242,0.4); border-radius:18px; padding:30px 28px 26px; text-align:center; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(88,101,242,0.12);
+  }
+  .discord-modal::after{
+    content:""; position:absolute; top:-50%; left:50%; transform:translateX(-50%); width:280px; height:280px;
+    background:radial-gradient(circle, rgba(88,101,242,0.22), transparent 70%); pointer-events:none;
+  }
+  .discord-icon-wrap{
+    width:54px; height:54px; border-radius:16px; background:rgba(88,101,242,0.15); border:1px solid rgba(88,101,242,0.4);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 16px; position:relative; z-index:1;
+  }
+  .discord-icon-wrap svg{width:28px; height:28px; fill:#a3aeff;}
+  .discord-modal h3{font-size:19px; font-weight:800; margin:0 0 8px; position:relative; z-index:1;}
+  .discord-modal p{font-size:13px; color:var(--text-muted); margin:0 0 22px; position:relative; z-index:1;}
+  .discord-join-btn{
+    display:inline-flex; align-items:center; gap:8px; background:linear-gradient(120deg,#5865F2,#7289ff);
+    color:#fff; text-decoration:none; font-weight:700; font-family:'JetBrains Mono',monospace; font-size:13px;
+    padding:12px 24px; border-radius:10px; box-shadow:0 4px 20px rgba(88,101,242,0.35);
+    position:relative; z-index:1; transition:filter .15s, transform .1s;
+  }
+  .discord-join-btn:hover{filter:brightness(1.08);}
+  .discord-join-btn:active{transform:scale(0.98);}
+  .discord-modal .modal-close{position:absolute; top:12px; right:12px;}
+</style>
+</head>
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div class="brand-name">PAYMENT GATEWAY</div>
+    </div>
+    <div class="header-actions">
+      <!-- Discord button -->
+      <button class="icon-btn" id="discordBtn">
+        <svg viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+        Discord
+      </button>
+      <!-- Admin toggle -->
+      <button class="icon-btn" id="adminToggle">Admin</button>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1>Fuel the work.</h1>
+    <p>Pick your currency, send it, drop your proof.</p>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-chip">
+      <span class="stat-label">Your IP</span>
+      <span class="stat-value mono" id="statIp">detecting…</span>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-label">Members</span>
+      <span class="stat-value mono" id="statMembers">—</span>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-label">Total donated</span>
+      <span class="stat-value mono" id="statTotal">—</span>
+    </div>
+  </div>
+
+  <!-- Tabs: Donate, Submit proof, Setup (Setup only appears when admin is active) -->
+  <div class="tabs" id="tabs">
+    <div class="tab-indicator" id="tabIndicator"></div>
+    <button class="tab-btn active" data-tab="donate">Donate</button>
+    <button class="tab-btn" data-tab="proof">Submit proof</button>
+    <button class="tab-btn" data-tab="setup" style="display:none;">Payment Setup</button>
+  </div>
+
+  <!-- ============ DONATE TAB ============ -->
+  <div class="tab-panel active" id="panel-donate">
+    <!-- Supported currencies disclaimer (new) -->
+    <div class="supported-currencies" id="supportedCurrencies"></div>
+
+    <div class="smart-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="methodSearch" type="text" placeholder="Search your currency… (BTC, ETH, cash)" autocomplete="off">
+      <div class="search-popup" id="searchPopup"></div>
+    </div>
+    <div class="crypto-hint" id="cryptoHint"></div>
+
+    <!-- Empty state -->
+    <div class="empty-note" id="noSelectionNote">Type above to see payment methods.</div>
+    <div class="empty-note" id="methodsEmpty" style="display:none;">No payment methods yet. Switch on Admin mode to add one.</div>
+
+    <div class="selected-card" id="selectedCard"></div>
+  </div>
+
+  <!-- ============ PROOF TAB ============ -->
+  <div class="tab-panel" id="panel-proof">
+    <div class="form-panel">
+      <div class="form-grid">
+        <div class="field">
+          <label>Your name (optional)</label>
+          <input id="pfName" type="text" placeholder="Anonymous">
+        </div>
+        <div class="field">
+          <label>Method</label>
+          <select id="pfMethod"></select>
+        </div>
+        <div class="field full">
+          <label>Amount</label>
+          <div class="quick-amounts">
+            <button type="button" class="qa-btn" data-amt="10">$10</button>
+            <button type="button" class="qa-btn" data-amt="25">$25</button>
+            <button type="button" class="qa-btn" data-amt="50">$50</button>
+            <button type="button" class="qa-btn" data-amt="100">$100</button>
+          </div>
+          <input id="pfAmount" type="text" placeholder="e.g. 0.005 BTC or $25">
+        </div>
+        <div class="field">
+          <label>Transaction reference / ID</label>
+          <input id="pfRef" type="text" placeholder="Optional tx hash or reference">
+        </div>
+        <div class="field">
+          <label>Note</label>
+          <input id="pfNote" type="text" placeholder="Optional">
+        </div>
+        <div class="field full">
+          <label>Proof screenshot (optional)</label>
+          <div class="file-drop" id="fileDrop">Click to attach a screenshot</div>
+          <input type="file" id="pfFile" accept="image/*" style="display:none;">
+        </div>
+      </div>
+      <div class="submit-row">
+        <button class="btn-primary" id="submitProofBtn">Submit for verification</button>
+        <span id="formMsg" class="form-msg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SETUP TAB (ADMIN ONLY) ============ -->
+  <div class="tab-panel" id="panel-setup">
+    <div class="admin-panel show">
+      <div class="title">Add a payment method</div>
+      <div class="row">
+        <input id="newMethodLabel" type="text" placeholder="Label (e.g. Bitcoin)">
+        <input id="newMethodAddress" type="text" placeholder="Address / link / handle">
+        <input id="newMethodNote" type="text" placeholder="Note (optional)">
+        <button class="btn-primary" id="addMethodBtn">Add</button>
+      </div>
+      <hr>
+      <div class="title">Submitted proofs</div>
+      <div class="submissions-list" id="submissionsList"></div>
+      <hr>
+      <button class="btn-danger-ghost" id="resetBtn">Reset all site data</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Discord Modal -->
+<div class="modal-bg" id="discordModalBg">
+  <div class="discord-modal">
+    <button class="modal-close" id="discordModalClose" style="position:absolute;">✕</button>
+    <div class="discord-icon-wrap">
+      <svg viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+    </div>
+    <h3>Join the Discord</h3>
+    <p>Come hang out, get updates, and connect with everyone else supporting the work.</p>
+    <a class="discord-join-btn" href="https://discord.gg/AABUzpzdU5" target="_blank" rel="noopener noreferrer">
+      Join Discord →
+    </a>
+  </div>
+</div>
+
+<script>
+(async function(){
+  // Element references
+  const methodSearch = document.getElementById('methodSearch');
+  const searchPopup = document.getElementById('searchPopup');
+  const selectedCard = document.getElementById('selectedCard');
+  const methodsEmpty = document.getElementById('methodsEmpty');
+  const noSelectionNote = document.getElementById('noSelectionNote');
+  const adminToggle = document.getElementById('adminToggle');
+  const pfMethodSelect = document.getElementById('pfMethod');
+  const fileDrop = document.getElementById('fileDrop');
+  const pfFile = document.getElementById('pfFile');
+  const pfAmount = document.getElementById('pfAmount');
+  const pfRef = document.getElementById('pfRef');
+  const formMsg = document.getElementById('formMsg');
+  const tabIndicator = document.getElementById('tabIndicator');
+  const submissionsList = document.getElementById('submissionsList');
+  const cryptoHint = document.getElementById('cryptoHint');
+  const supportedCurrencies = document.getElementById('supportedCurrencies');
+
+  let isAdmin = false;
+  let methods = [];
+  let selectedMethodId = null;
+  let proofBase64 = null;
+  let popupIndex = -1;
+  let popupItems = [];
+  let submissions = [];
+
+  // ---------- Storage helpers (fallback to localStorage) ----------
+  const storageAPI = {
+    async get(key, shared) {
+      try {
+        if (window.storage && typeof window.storage.get === 'function') {
+          const r = await window.storage.get(key, shared);
+          return r ? r.value : null;
+        }
+      } catch(e) {}
+      const prefix = shared ? 'global:' : 'local:';
+      const val = localStorage.getItem(prefix + key);
+      if (val !== null) return JSON.parse(val);
+      return null;
+    },
+    async set(key, value, shared) {
+      try {
+        if (window.storage && typeof window.storage.set === 'function') {
+          return await window.storage.set(key, value, shared);
+        }
+      } catch(e) {}
+      const prefix = shared ? 'global:' : 'local:';
+      localStorage.setItem(prefix + key, JSON.stringify(value));
+      return { ok: true };
+    },
+    async delete(key, shared) {
+      try {
+        if (window.storage && typeof window.storage.delete === 'function') {
+          return await window.storage.delete(key, shared);
+        }
+      } catch(e) {}
+      const prefix = shared ? 'global:' : 'local:';
+      localStorage.removeItem(prefix + key);
+      return { ok: true };
+    },
+    async list(prefix, shared) {
+      try {
+        if (window.storage && typeof window.storage.list === 'function') {
+          const r = await window.storage.list(prefix, shared);
+          return r ? r.keys : [];
+        }
+      } catch(e) {}
+      const p = (shared ? 'global:' : 'local:') + prefix;
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(p)) keys.push(k.substring(p.length));
+      }
+      return keys;
+    }
+  };
+
+  const safeGet = async (key, shared) => storageAPI.get(key, shared);
+  const safeSet = async (key, value, shared) => storageAPI.set(key, value, shared);
+  const safeDelete = async (key, shared) => storageAPI.delete(key, shared);
+  const listKeys = async (prefix, shared) => storageAPI.list(prefix, shared);
+
+  // ---------- Utility ----------
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function fuzzyScore(query, text){
+    query = query.toLowerCase().trim();
+    text = (text || '').toLowerCase();
+    if(!query) return 0;
+    if(text === query) return 100;
+    if(text.startsWith(query)) return 90;
+    if(text.includes(query)) return 70;
+    let qi = 0, gaps = 0;
+    for(let i=0; i<text.length && qi<query.length; i++){
+      if(text[i] === query[qi]){ qi++; } else if(qi>0){ gaps++; }
+    }
+    if(qi === query.length) return Math.max(10, 50 - gaps);
+    return -1;
+  }
+  function highlightMatch(text, query){
+    if(!query) return escapeHtml(text);
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if(idx === -1) return escapeHtml(text);
+    return escapeHtml(text.slice(0,idx)) + '<mark>' + escapeHtml(text.slice(idx, idx+query.length)) + '</mark>' + escapeHtml(text.slice(idx+query.length));
+  }
+
+  // ---------- Crypto detection ----------
+  function detectCrypto(input){
+    input = input.trim().toLowerCase();
+    if(!input) return { type: 'unknown', valid: false, label: '' };
+    if(/^(bc1[a-z0-9]{25,62}|[13][a-km-z0-9]{25,34})$/.test(input)) return { type: 'btc', valid: true, label: 'Bitcoin' };
+    if(/^0x[a-f0-9]{40}$/.test(input)) return { type: 'eth', valid: true, label: 'Ethereum' };
+    if(/^[1-9a-km-z]{32,44}$/.test(input)) return { type: 'sol', valid: true, label: 'Solana' };
+    if(/^paypal\.me\/[a-z0-9_-]+$/i.test(input)) return { type: 'paypal', valid: true, label: 'PayPal' };
+    return { type: 'unknown', valid: false, label: 'Unknown' };
+  }
+
+  function showCryptoHint(type, text, className){
+    cryptoHint.className = 'crypto-hint show ' + className;
+    cryptoHint.innerHTML = `<span>${text}</span>`;
+  }
+
+  function hideCryptoHint(){
+    cryptoHint.className = 'crypto-hint';
+    cryptoHint.innerHTML = '';
+  }
+
+  // ---------- Supported currencies disclaimer (new) ----------
+  function updateSupportedCurrencies(){
+    if(methods.length === 0){
+      supportedCurrencies.innerHTML = `<strong>Supported currencies:</strong> None added yet.`;
+    } else {
+      const labels = methods.map(m => escapeHtml(m.label)).join(', ');
+      supportedCurrencies.innerHTML = `<strong>Supported currencies:</strong> ${labels}`;
+    }
+  }
+
+  // ---------- Load / Save ----------
+  async function loadMethods(){
+    const raw = await safeGet('payment-methods', true);
+    methods = raw ? JSON.parse(raw) : [];
+    updateSupportedCurrencies();
+  }
+  async function saveMethods(){ await safeSet('payment-methods', JSON.stringify(methods), true); updateSupportedCurrencies(); }
+
+  async function loadSubmissions(){
+    const keys = await listKeys('donation:', true);
+    submissions = [];
+    for(const k of keys){
+      const raw = await safeGet(k, true);
+      if(raw){
+        try{ submissions.push(JSON.parse(raw)); }catch(e){}
+      }
+    }
+    submissions.sort((a,b) => new Date(b.date) - new Date(a.date));
+  }
+  async function saveSubmission(sub){ await safeSet('donation:' + sub.id, JSON.stringify(sub), true); await loadSubmissions(); }
+  async function updateSubmissionStatus(id, status){
+    const idx = submissions.findIndex(s => s.id === id);
+    if(idx !== -1){
+      submissions[idx].status = status;
+      await safeSet('donation:' + id, JSON.stringify(submissions[idx]), true);
+    }
+  }
+
+  // ---------- Tabs ----------
+  const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
+  function activateTab(name){
+    tabBtns.forEach((b,i) => {
+      const active = b.dataset.tab === name;
+      b.classList.toggle('active', active);
+      if(active){
+        const visibleTabs = tabBtns.filter(t => t.style.display !== 'none');
+        const index = visibleTabs.indexOf(b);
+        const width = (100 / visibleTabs.length);
+        tabIndicator.style.width = `calc(${width}% - ${(visibleTabs.length-1)*4}px)`;
+        tabIndicator.style.transform = `translateX(${index * 100}%)`;
+      }
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-'+name));
+  }
+  tabBtns.forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
+
+  // ---------- Selected card ----------
+  function updateVisibility(){
+    const hasSelection = selectedMethodId !== null;
+    noSelectionNote.style.display = hasSelection ? 'none' : 'block';
+    selectedCard.classList.toggle('show', hasSelection);
+  }
+
+  function renderSelectedCard(){
+    const m = methods.find(x => x.id === selectedMethodId);
+    methodsEmpty.style.display = (methods.length === 0) ? 'block' : 'none';
+    updateVisibility();
+    if(!m){ selectedCard.innerHTML=''; return; }
+    selectedCard.innerHTML = `
+      <div class="sc-body">
+        <div class="sc-main">
+          <div class="sc-top">
+            <div class="sc-label">${escapeHtml(m.label)}</div>
+            <div class="sc-tag">Selected</div>
+          </div>
+          <div class="sc-address">${escapeHtml(m.address)}</div>
+          <div class="sc-note">${escapeHtml(m.note || '')}</div>
+          <div class="sc-actions">
+            <button class="btn-primary" id="copyAddrBtn">Copy address</button>
+            <button class="btn-payment-made" id="paymentMadeBtn">I've made the payment</button>
+            ${isAdmin ? `<button class="btn-remove" id="removeMethodBtn">Remove</button>` : ''}
+          </div>
+        </div>
+        <div class="sc-qr" id="scQr"></div>
+      </div>
+    `;
+    document.getElementById('copyAddrBtn').addEventListener('click', async (e) => {
+      try{
+        await navigator.clipboard.writeText(m.address);
+        e.target.textContent = 'Copied ✓';
+        setTimeout(() => { e.target.textContent = 'Copy address'; }, 1500);
+      }catch(err){}
+    });
+    document.getElementById('paymentMadeBtn').addEventListener('click', () => {
+      activateTab('proof');
+      pfMethodSelect.value = m.label;
+      pfAmount.focus();
+    });
+    const rm = document.getElementById('removeMethodBtn');
+    if(rm) rm.addEventListener('click', async () => {
+      methods = methods.filter(x => x.id !== m.id);
+      await saveMethods();
+      selectedMethodId = methods[0] ? methods[0].id : null;
+      renderSelectedCard(); renderMethodSelect();
+    });
+    const qrEl = document.getElementById('scQr');
+    try{
+      if(window.QRCode){
+        new QRCode(qrEl, {
+          text: m.address, width: 100, height: 100,
+          colorDark: "#04121a", colorLight: "#eaeeff"
+        });
+      } else {
+        throw new Error('QRCode lib missing');
+      }
+    }catch(e){
+      qrEl.innerHTML = `<div class="sc-qr-fallback">${escapeHtml(m.address.slice(0,15))}…</div>`;
+    }
+  }
+
+  function selectMethod(id){
+    selectedMethodId = id;
+    methodSearch.value = '';
+    closePopup();
+    renderSelectedCard();
+    hideCryptoHint();
+  }
+
+  function renderMethodSelect(){
+    pfMethodSelect.innerHTML = methods.length
+      ? methods.map(m => `<option value="${escapeHtml(m.label)}">${escapeHtml(m.label)}</option>`).join('')
+      : `<option value="">Other</option>`;
+  }
+
+  // ---------- Smart search popup + crypto detection ----------
+  function openPopup(){ searchPopup.classList.add('show'); }
+  function closePopup(){ searchPopup.classList.remove('show'); popupIndex = -1; }
+
+  function renderPopup(query){
+    const scored = methods
+      .map(m => ({ m, s: Math.max(fuzzyScore(query, m.label), fuzzyScore(query, m.address)) }))
+      .filter(x => x.s >= 0)
+      .sort((a,b) => b.s - a.s);
+    popupItems = scored.map(x => x.m);
+
+    if(!query){ closePopup(); hideCryptoHint(); return; }
+    if(!scored.length){
+      searchPopup.innerHTML = `<div class="no-match">No currency matches "${escapeHtml(query)}"</div>`;
+      openPopup();
+    } else {
+      searchPopup.innerHTML = scored.map((x,i) => `
+        <div class="opt" data-id="${x.m.id}" data-i="${i}">
+          <div><div class="opt-name">${highlightMatch(x.m.label, query)}</div></div>
+          <div class="opt-addr">${escapeHtml(x.m.address)}</div>
+        </div>
+      `).join('');
+      searchPopup.querySelectorAll('.opt').forEach(o => {
+        o.addEventListener('click', () => selectMethod(o.dataset.id));
+        o.addEventListener('mouseenter', () => setHighlight(parseInt(o.dataset.i)));
+      });
+      openPopup();
+    }
+
+    // Show crypto detection hint
+    const detected = detectCrypto(query);
+    if(detected.type !== 'unknown' && detected.valid){
+      const matchingMethod = methods.find(m => m.label.toLowerCase().includes(detected.label.toLowerCase()));
+      if(matchingMethod){
+        showCryptoHint('ok', `Detected: ${detected.label} address — matches ${matchingMethod.label}`, 'ok');
+      } else {
+        showCryptoHint('warn', `Detected: ${detected.label} address, but no ${detected.label} method exists yet`, 'warn');
+      }
+    } else if(query.length > 3 && detected.type === 'unknown'){
+      showCryptoHint('err', 'Unrecognized address format', 'err');
+    } else {
+      hideCryptoHint();
+    }
+  }
+
+  function setHighlight(i){
+    popupIndex = i;
+    searchPopup.querySelectorAll('.opt').forEach(o => o.classList.toggle('hl', parseInt(o.dataset.i) === i));
+  }
+
+  methodSearch.addEventListener('input', () => renderPopup(methodSearch.value.trim()));
+  methodSearch.addEventListener('focus', () => { if(methodSearch.value.trim()) renderPopup(methodSearch.value.trim()); });
+  methodSearch.addEventListener('keydown', (e) => {
+    if(!searchPopup.classList.contains('show')) return;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); setHighlight(Math.min(popupIndex+1, popupItems.length-1)); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); setHighlight(Math.max(popupIndex-1, 0)); }
+    else if(e.key === 'Enter'){ e.preventDefault(); if(popupIndex>=0 && popupItems[popupIndex]) selectMethod(popupItems[popupIndex].id); }
+    else if(e.key === 'Escape'){ closePopup(); hideCryptoHint(); }
+  });
+  document.addEventListener('click', (e) => { if(!e.target.closest('.smart-search')) { closePopup(); } });
+
+  // ---------- Admin toggle ----------
+  adminToggle.addEventListener('click', () => {
+    if(!isAdmin){
+      const code = prompt('Enter admin passcode:');
+      if(code === null) return;
+      checkOrSetAdmin(code);
+    } else {
+      isAdmin = false;
+      adminToggle.textContent = 'Admin';
+      adminToggle.classList.remove('active');
+      // Hide setup tab
+      const setupTab = document.querySelector('[data-tab="setup"]');
+      setupTab.style.display = 'none';
+      activateTab('donate');
+      renderSelectedCard();
+    }
+  });
+  async function checkOrSetAdmin(code){
+    if(!code) return;
+    let stored = await safeGet('admin-passcode', true);
+    if(stored === null){ await safeSet('admin-passcode', code, true); stored = code; }
+    if(code === stored){
+      isAdmin = true;
+      adminToggle.textContent = 'Admin ✓';
+      adminToggle.classList.add('active');
+      // Show setup tab
+      const setupTab = document.querySelector('[data-tab="setup"]');
+      setupTab.style.display = 'block';
+      activateTab('setup');
+      renderSelectedCard();
+      await loadSubmissions();
+      renderSubmissionsList();
+      const pendingCount = submissions.filter(s => s.status === 'pending').length;
+      if(pendingCount > 0){
+        alert(`You have ${pendingCount} pending proof(s) for verification.`);
+      }
+    } else { alert('Incorrect passcode.'); }
+  }
+
+  // ---------- Add method ----------
+  document.getElementById('addMethodBtn').addEventListener('click', async () => {
+    const label = document.getElementById('newMethodLabel').value.trim();
+    const address = document.getElementById('newMethodAddress').value.trim();
+    const note = document.getElementById('newMethodNote').value.trim();
+    if(!label || !address){ alert('Label and address are required.'); return; }
+    const m = { id: uid(), label, address, note };
+    methods.push(m);
+    await saveMethods();
+    document.getElementById('newMethodLabel').value = '';
+    document.getElementById('newMethodAddress').value = '';
+    document.getElementById('newMethodNote').value = '';
+    renderSelectedCard(); renderMethodSelect();
+  });
+
+  // ---------- Quick amounts ----------
+  document.querySelectorAll('.qa-btn').forEach(btn => {
+    btn.addEventListener('click', () => { pfAmount.value = '$' + btn.dataset.amt; pfAmount.focus(); });
+  });
+
+  // ---------- File upload ----------
+  fileDrop.addEventListener('click', () => pfFile.click());
+  pfFile.addEventListener('change', () => {
+    const file = pfFile.files[0];
+    if(!file) return;
+    if(file.size > 4*1024*1024){ alert('Please choose an image under 4MB.'); pfFile.value=''; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      proofBase64 = reader.result;
+      fileDrop.textContent = 'Attached: ' + file.name;
+      fileDrop.classList.add('has-file');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // ---------- Submit proof ----------
+  document.getElementById('submitProofBtn').addEventListener('click', async () => {
+    const donor = document.getElementById('pfName').value.trim();
+    const method = pfMethodSelect.value;
+    const amount = pfAmount.value.trim();
+    const ref = pfRef.value.trim();
+    const note = document.getElementById('pfNote').value.trim();
+    if(!amount){ formMsg.textContent = 'Amount is required.'; formMsg.className = 'form-msg err'; return; }
+
+    const sub = { id: uid(), donor, method, amount, ref, note, proof: proofBase64, status: 'pending', date: new Date().toISOString() };
+    document.getElementById('submitProofBtn').disabled = true;
+    formMsg.textContent = 'Submitting…'; formMsg.className = 'form-msg';
+    try{
+      await saveSubmission(sub);
+      formMsg.textContent = 'Submitted — thank you!'; formMsg.className = 'form-msg ok';
+      document.getElementById('pfName').value = '';
+      pfAmount.value = '';
+      pfRef.value = '';
+      document.getElementById('pfNote').value = '';
+      pfFile.value = ''; proofBase64 = null;
+      fileDrop.textContent = 'Click to attach a screenshot';
+      fileDrop.classList.remove('has-file');
+      launchConfetti();
+      await computeTotalDonated();
+      if(isAdmin) renderSubmissionsList();
+    }catch(e){
+      formMsg.textContent = 'Something went wrong. Try again.'; formMsg.className = 'form-msg err';
+    }
+    document.getElementById('submitProofBtn').disabled = false;
+  });
+
+  // ---------- Auto-detect currency in amount field ----------
+  pfAmount.addEventListener('input', () => {
+    const value = pfAmount.value.trim();
+    const selectedMethod = pfMethodSelect.value;
+    const detected = detectCryptoFromAmount(value);
+    if(detected){
+      if(selectedMethod && selectedMethod.toLowerCase().includes(detected.label.toLowerCase())){
+        showCryptoHint('ok', `Currency matches selected method (${detected.label})`, 'ok');
+      } else {
+        showCryptoHint('err', `Currency mismatch: you entered ${detected.label}, but selected ${selectedMethod || 'none'}`, 'err');
+      }
+    } else {
+      hideCryptoHint();
+    }
+  });
+
+  function detectCryptoFromAmount(amount){
+    const lower = amount.toLowerCase();
+    if(lower.includes('btc') || lower.includes('bitcoin')) return { label: 'Bitcoin' };
+    if(lower.includes('eth') || lower.includes('ethereum')) return { label: 'Ethereum' };
+    if(lower.includes('sol') || lower.includes('solana')) return { label: 'Solana' };
+    return null;
+  }
+
+  // ---------- Discord popup ----------
+  const discordModalBg = document.getElementById('discordModalBg');
+  document.getElementById('discordBtn').addEventListener('click', () => discordModalBg.classList.add('show'));
+  document.getElementById('discordModalClose').addEventListener('click', () => discordModalBg.classList.remove('show'));
+  discordModalBg.addEventListener('click', (e) => { if(e.target.id === 'discordModalBg') discordModalBg.classList.remove('show'); });
+  setTimeout(() => discordModalBg.classList.add('show'), 1200);
+
+  // ---------- Reset ----------
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    if(!confirm('This clears all payment methods, member count, and submissions. Continue?')) return;
+    await safeDelete('payment-methods', true);
+    await safeDelete('member-count', true);
+    const keys = await listKeys('donation:', true);
+    for(const k of keys){ await safeDelete(k, true); }
+    methods = []; selectedMethodId = null;
+    renderSelectedCard(); renderMethodSelect(); updateSupportedCurrencies();
+    document.getElementById('statMembers').textContent = '0';
+    document.getElementById('statTotal').textContent = '0';
+    submissions = []; if(isAdmin) renderSubmissionsList();
+  });
+
+  // ---------- IP detection ----------
+  async function detectIp(){
+    const el = document.getElementById('statIp');
+    try{
+      const res = await fetch('https://api.ipify.org?format=json');
+      if(!res.ok) throw new Error('bad response');
+      const data = await res.json();
+      el.textContent = data.ip;
+    }catch(e){
+      el.textContent = 'unavailable';
+      el.classList.add('dim');
+      el.title = 'Blocked by this preview environment or your browser — works when the file is opened directly.';
+    }
+  }
+
+  // ---------- Member count ----------
+  async function bumpMemberCount(){
+    const el = document.getElementById('statMembers');
+    try{
+      const alreadyCounted = await safeGet('visited-flag', false);
+      let raw = await safeGet('member-count', true);
+      let count = raw ? parseInt(raw, 10) : 0;
+      if(!alreadyCounted){
+        count += 1;
+        await safeSet('member-count', String(count), true);
+        await safeSet('visited-flag', 'true', false);
+      }
+      el.textContent = count.toLocaleString();
+    }catch(e){ el.textContent = '—'; }
+  }
+
+  // ---------- Total donated ----------
+  function parseAmountNumber(str){
+    if(!str) return 0;
+    const cleaned = str.replace(/,/g,'');
+    const m = cleaned.match(/\d+(\.\d+)?/);
+    return m ? parseFloat(m[0]) : 0;
+  }
+  async function computeTotalDonated(){
+    const el = document.getElementById('statTotal');
+    try{
+      await loadSubmissions();
+      let total = 0;
+      submissions.forEach(sub => {
+        if(sub.status !== 'rejected') total += parseAmountNumber(sub.amount);
+      });
+      el.textContent = total.toLocaleString(undefined, {maximumFractionDigits:4});
+    }catch(e){ el.textContent = '—'; }
+  }
+
+  // ---------- Render submissions list (admin) ----------
+  function renderSubmissionsList(){
+    if(!submissions.length){
+      submissionsList.innerHTML = `<div class="no-submissions">No submissions yet.</div>`;
+      return;
+    }
+    submissionsList.innerHTML = submissions.map(s => `
+      <div class="submission-item" id="sub-${s.id}">
+        <div class="submission-info">
+          <div class="who">${escapeHtml(s.donor || 'Anonymous')}</div>
+          <div class="what">${escapeHtml(s.method)} — ${escapeHtml(s.amount)}</div>
+          <div class="what">${new Date(s.date).toLocaleString()}</div>
+          <div class="status submission-status-${s.status}">${s.status}</div>
+        </div>
+        <div class="submission-actions">
+          <button class="btn-sm verify" data-id="${s.id}">Verify</button>
+          <button class="btn-sm reject" data-id="${s.id}">Reject</button>
+        </div>
+      </div>
+    `).join('');
+
+    submissionsList.querySelectorAll('.btn-sm.verify').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        await updateSubmissionStatus(id, 'verified');
+        await loadSubmissions();
+        renderSubmissionsList();
+        computeTotalDonated();
+      });
+    });
+    submissionsList.querySelectorAll('.btn-sm.reject').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        await updateSubmissionStatus(id, 'rejected');
+        await loadSubmissions();
+        renderSubmissionsList();
+        computeTotalDonated();
+      });
+    });
+  }
+
+  // ---------- Confetti ----------
+  const confettiCanvas = document.getElementById('confettiCanvas');
+  const cctx = confettiCanvas.getContext('2d');
+  function resizeConfetti(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+  window.addEventListener('resize', resizeConfetti);
+  resizeConfetti();
+  function launchConfetti(){
+    const colors = ['#4cf3ff','#ff4cd6','#8a5cff','#39ff9d','#ffcc4c'];
+    const particles = Array.from({length:80}, () => ({
+      x: confettiCanvas.width/2 + (Math.random()-0.5)*120,
+      y: confettiCanvas.height*0.3,
+      vx: (Math.random()-0.5)*10,
+      vy: Math.random()*-9 - 3,
+      size: Math.random()*6+4,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      rot: Math.random()*360,
+      vrot: (Math.random()-0.5)*14,
+      life: 0
+    }));
+    let frame = 0;
+    function tick(){
+      frame++;
+      cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+      let alive = false;
+      particles.forEach(p => {
+        p.vy += 0.28;
+        p.x += p.vx; p.y += p.vy; p.rot += p.vrot; p.life++;
+        if(p.y < confettiCanvas.height + 20) alive = true;
+        cctx.save();
+        cctx.translate(p.x, p.y);
+        cctx.rotate(p.rot * Math.PI/180);
+        cctx.fillStyle = p.color;
+        cctx.globalAlpha = Math.max(0, 1 - p.life/110);
+        cctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+        cctx.restore();
+      });
+      if(alive && frame < 130) requestAnimationFrame(tick);
+      else cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+    }
+    tick();
+  }
+
+  // ---------- Init ----------
+  await loadMethods();
+  if(methods.length === 0){
+    methods = [
+      { id: uid(), label: 'Bitcoin', address: 'bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', note: 'BTC only, on-chain' },
+      { id: uid(), label: 'Ethereum', address: '0xExampleAddressReplaceMe0000000000000', note: 'ETH / ERC-20' },
+      { id: uid(), label: 'PayPal', address: 'paypal.me/yourhandle', note: 'Cash donations' },
+    ];
+    await saveMethods();
+  }
+  selectedMethodId = null;
+  renderSelectedCard();
+  renderMethodSelect();
+  updateSupportedCurrencies(); // ensure it's set after load
+
+  // Initialize tab indicator for 2 tabs (setup hidden)
+  const setupTab = document.querySelector('[data-tab="setup"]');
+  setupTab.style.display = 'none';
+  activateTab('donate');
+
+  detectIp();
+  bumpMemberCount();
+  await computeTotalDonated();
+})();
+</script>
+</body>
+</html>
