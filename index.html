@@ -28,7 +28,12 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:var(--bg-deep);
+    /* ---------- Background image with blur ---------- */
+    background-image: url('vortex.png'); /* <-- Change filename if needed */
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-color: var(--bg-deep); /* fallback */
     color:var(--text);
     font-family:'Sora',sans-serif;
     min-height:100vh;
@@ -36,15 +41,15 @@
     position:relative;
     overflow-x:hidden;
   }
+  /* Blur & darken overlay */
   body::before{
     content:"";
     position:fixed; inset:0; z-index:0; pointer-events:none;
-    background-image:
-      linear-gradient(rgba(76,243,255,0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(76,243,255,0.035) 1px, transparent 1px);
-    background-size:42px 42px;
-    mask-image:radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 90%);
+    background: rgba(4,6,17,0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
+  /* Remove the old grid overlay & keep the glow effect */
   body::after{
     content:"";
     position:fixed; inset:0; z-index:0; pointer-events:none;
@@ -190,7 +195,7 @@
   .search-popup .opt-addr{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .search-popup .no-match{padding:16px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; font-size:12.5px; text-align:center;}
 
-  /* ---------- Supported currencies disclaimer (new) ---------- */
+  /* ---------- Supported currencies disclaimer ---------- */
   .supported-currencies{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted);
     background:rgba(255,255,255,0.02); border:1px solid var(--line-soft); border-radius:8px;
@@ -421,7 +426,7 @@
 
   <!-- ============ DONATE TAB ============ -->
   <div class="tab-panel active" id="panel-donate">
-    <!-- Supported currencies disclaimer (new) -->
+    <!-- Supported currencies disclaimer -->
     <div class="supported-currencies" id="supportedCurrencies"></div>
 
     <div class="smart-search">
@@ -646,7 +651,7 @@
     cryptoHint.innerHTML = '';
   }
 
-  // ---------- Supported currencies disclaimer (new) ----------
+  // ---------- Supported currencies disclaimer ----------
   function updateSupportedCurrencies(){
     if(methods.length === 0){
       supportedCurrencies.innerHTML = `<strong>Supported currencies:</strong> None added yet.`;
@@ -1137,7 +1142,7 @@
   selectedMethodId = null;
   renderSelectedCard();
   renderMethodSelect();
-  updateSupportedCurrencies(); // ensure it's set after load
+  updateSupportedCurrencies();
 
   // Initialize tab indicator for 2 tabs (setup hidden)
   const setupTab = document.querySelector('[data-tab="setup"]');
